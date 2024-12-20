@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Book, GraduationCap, Clock } from 'lucide-react';
+import { Book, GraduationCap, Clock, PlusCircle } from 'lucide-react';
 import api, { Student, Course, Grade } from '@/lib/api';
 
 export default function StudentDashboard() {
@@ -80,7 +80,7 @@ export default function StudentDashboard() {
         </button>
       </div>
       
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {/* Current Courses */}
         <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
           <div className="p-5">
@@ -109,6 +109,38 @@ export default function StudentDashboard() {
                 className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center space-x-1"
               >
                 <span>View all courses</span>
+                <span aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Course Registration */}
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <PlusCircle className="h-6 w-6 text-blue-500" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Course Registration
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    Register for new courses
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-5 py-3">
+            <div className="text-sm">
+              <Link
+                href="/student/register"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center space-x-1"
+              >
+                <span>Register now</span>
                 <span aria-hidden="true">&rarr;</span>
               </Link>
             </div>
@@ -149,7 +181,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Next Class */}
+        {/* Schedule */}
         <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
           <div className="p-5">
             <div className="flex items-center">
@@ -159,24 +191,10 @@ export default function StudentDashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">
-                    Next Class
+                    Class Schedule
                   </dt>
-                  <dd className="mt-1">
-                    {courses[0] ? (
-                      <>
-                        <div className="text-sm font-medium text-gray-900">
-                          {courses[0].course_id} - {courses[0].course_name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {/* We'll need to parse the schedule JSON to show the next class time */}
-                          Check schedule for details
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-sm text-gray-500">
-                        No upcoming classes
-                      </div>
-                    )}
+                  <dd className="mt-1 text-sm text-gray-900">
+                    View your weekly schedule
                   </dd>
                 </dl>
               </div>
