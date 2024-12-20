@@ -1,66 +1,66 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { GraduationCap, TrendingUp, Calendar } from 'lucide-react';
-
-interface CourseGrade {
-  courseId: string;
-  courseName: string;
-  credits: number;
-  grade: string;
-  term: string;
-  instructor: string;
-}
-
-const grades: CourseGrade[] = [
-  {
-    courseId: 'CS101',
-    courseName: 'Introduction to Programming',
-    credits: 3,
-    grade: 'A',
-    term: 'Fall 2023',
-    instructor: 'Dr. Robert Anderson'
-  },
-  {
-    courseId: 'MATH201',
-    courseName: 'Calculus I',
-    credits: 4,
-    grade: 'A-',
-    term: 'Fall 2023',
-    instructor: 'Dr. Sarah Williams'
-  },
-  {
-    courseId: 'CS201',
-    courseName: 'Data Structures',
-    credits: 3,
-    grade: 'In Progress',
-    term: 'Spring 2024',
-    instructor: 'Dr. David Brown'
-  }
-];
-
-const calculateGPA = (grades: CourseGrade[]) => {
-  const gradePoints: { [key: string]: number } = {
-    'A+': 4.0, 'A': 4.0, 'A-': 3.7,
-    'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-    'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-    'D+': 1.3, 'D': 1.0, 'F': 0.0
-  };
-
-  const completedCourses = grades.filter(g => gradePoints[g.grade]);
-  const totalPoints = completedCourses.reduce((sum, course) => 
-    sum + (gradePoints[course.grade] * course.credits), 0);
-  const totalCredits = completedCourses.reduce((sum, course) => 
-    sum + course.credits, 0);
-
-  return (totalPoints / totalCredits).toFixed(2);
-};
+import api, { Grade } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function GradesPage() {
-  const currentGPA = calculateGPA(grades);
-  const totalCredits = grades.reduce((sum, course) => sum + course.credits, 0);
-  const completedCredits = grades
-    .filter(g => g.grade !== 'In Progress')
-    .reduce((sum, course) => sum + course.credits, 0);
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [gpa, setGpa] = useState<number>(0);
+  const [student, setStudent] = useState<{ first_name: string; last_name: string } | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const studentId = localStorage.getItem('studentId');
+        
+        if (!studentId) {
+          router.push('/');
+          return;
+        }
+
+        const [studentData, gradesData] = await Promise.all([
+          api.getStudent(parseInt(studentId)),
+          api.getStudentGrades(parseInt(studentId))
+        ]);
+
+        setStudent(studentData);
+        setGrades(gradesData.grades);
+        setGpa(gradesData.gpa);
+      } catch (err) {
+        setError('Failed to load grades data');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        {error}
+      </div>
+    );
+  }
+
+  // Calculate completed credits
+  const completedCredits = grades.reduce((sum, course) => sum + course.credits, 0);
 
   return (
     <div className="space-y-6">
@@ -80,7 +80,7 @@ export default function GradesPage() {
                     Cumulative GPA
                   </dt>
                   <dd className="text-2xl font-semibold text-gray-900">
-                    {currentGPA}
+                    {gpa.toFixed(2)}
                   </dd>
                 </dl>
               </div>
@@ -100,7 +100,7 @@ export default function GradesPage() {
                     Credits Completed
                   </dt>
                   <dd className="text-2xl font-semibold text-gray-900">
-                    {completedCredits}/{totalCredits}
+                    {completedCredits}
                   </dd>
                 </dl>
               </div>
@@ -120,7 +120,7 @@ export default function GradesPage() {
                     Current Term
                   </dt>
                   <dd className="text-2xl font-semibold text-gray-900">
-                    Spring 2024
+                    Fall 2024
                   </dd>
                 </dl>
               </div>
@@ -142,9 +142,6 @@ export default function GradesPage() {
                   Course
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Term
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Instructor
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -157,20 +154,17 @@ export default function GradesPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {grades.map((course) => (
-                <tr key={`${course.courseId}-${course.term}`}>
+                <tr key={course.course_id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {course.courseId}
+                      {course.course_id}
                     </div>
                     <div className="text-sm text-gray-500">
-                      {course.courseName}
+                      {course.course_name}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {course.term}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {course.instructor}
+                    {course.instructor_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {course.credits}

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS Student (
     email VARCHAR(100) NOT NULL,
     date_of_birth DATE NOT NULL,
     major VARCHAR(50),
+    enrollment_date DATE NOT NULL,
     gpa DECIMAL(3,2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -16,5 +17,6 @@ CREATE TABLE IF NOT EXISTS Student (
         CHECK (email REGEXP '^[a-z]+\.[a-z]+[0-9]{2}(\.[0-9]+)?@my\.johndoe\.edu$'),
     
     -- Indexes
-    INDEX idx_student_name (last_name, first_name)
+    INDEX idx_student_name (last_name, first_name),
+    UNIQUE INDEX idx_student_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

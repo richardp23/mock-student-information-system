@@ -3,16 +3,35 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const STUDENT_MAP: { [key: string]: number } = {
+  'john.smith23@my.johndoe.edu': 1,
+  'jane.doe23@my.johndoe.edu': 2,
+  'bob.johnson23@my.johndoe.edu': 3
+};
+
 export default function Home() {
   const router = useRouter();
   const [role, setRole] = useState<'student' | 'admin'>('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, we'd validate credentials here
-    router.push(`/${role}`);
+    
+    if (role === 'student') {
+      const studentId = STUDENT_MAP[email];
+      if (studentId) {
+        // Store the student ID in localStorage
+        localStorage.setItem('studentId', studentId.toString());
+        router.push('/student');
+      } else {
+        setError('Invalid student email address');
+      }
+    } else {
+      // Handle admin login
+      router.push('/admin');
+    }
   };
 
   return (
@@ -76,6 +95,12 @@ export default function Home() {
                 placeholder="Enter your password"
               />
             </div>
+
+            {error && (
+              <div className="text-red-600 text-sm">
+                {error}
+              </div>
+            )}
           </div>
 
           <button

@@ -1,4 +1,4 @@
--- Seed data for Student Information System
+USE student_db;
 
 -- Clear existing data (if any)
 SET FOREIGN_KEY_CHECKS=0;
@@ -10,99 +10,63 @@ TRUNCATE TABLE Instructor;
 SET FOREIGN_KEY_CHECKS=1;
 
 -- Seed Students
-INSERT INTO Student (first_name, last_name, email, date_of_birth, major, gpa) VALUES
-    ('John', 'Smith', 'john.smith23@my.johndoe.edu', '2005-05-15', 'Computer Science', 3.75),
-    ('Jane', 'Doe', 'jane.doe23@my.johndoe.edu', '2005-03-22', 'Mathematics', 4.00),
-    ('John', 'Smith', 'john.smith23.2@my.johndoe.edu', '2005-11-30', 'Physics', 3.50),  -- Note the .2 suffix for duplicate name
-    ('Maria', 'Garcia', 'maria.garcia24@my.johndoe.edu', '2006-01-10', 'Computer Science', 3.90),
-    ('James', 'Wilson', 'james.wilson24@my.johndoe.edu', '2006-07-20', 'Mathematics', 3.85);
+INSERT INTO Student (first_name, last_name, email, date_of_birth, major, enrollment_date, gpa) VALUES
+    ('John', 'Smith', 'john.smith23@my.johndoe.edu', '2005-05-15', 'Computer Science', '2023-09-01', 3.75),
+    ('Jane', 'Doe', 'jane.doe23@my.johndoe.edu', '2005-03-22', 'Mathematics', '2023-09-01', 4.00),
+    ('Bob', 'Johnson', 'bob.johnson23@my.johndoe.edu', '2005-11-30', 'Physics', '2023-09-01', 3.50);
 
 -- Seed Instructors
-INSERT INTO Instructor (first_name, last_name, email, department, office_location, phone) VALUES
-    ('Robert', 'Anderson', 'andersor@johndoe.edu', 'Computer Science', 'CS-410', '123-456-7890'),
-    ('Sarah', 'Williams', 'williams@johndoe.edu', 'Mathematics', 'MATH-220', '123-456-7891'),
-    ('Michael', 'Johnson', 'johnsonm@johndoe.edu', 'Physics', 'PHY-310', '123-456-7892'),
-    ('Emily', 'Williams', 'william2@johndoe.edu', 'Mathematics', 'MATH-225', '123-456-7893'),  -- Note the 2 suffix for duplicate last name
-    ('David', 'Brown', 'brownd@johndoe.edu', 'Computer Science', 'CS-415', '123-456-7894');
+INSERT INTO Instructor (first_name, last_name, email, department, hire_date) VALUES
+    ('Alice', 'Williams', 'williama@johndoe.edu', 'Computer Science', '2020-01-15'),
+    ('Andrew', 'Williams', 'williama2@johndoe.edu', 'Computer Science', '2021-08-15'),
+    ('David', 'Brown', 'brownbrd@johndoe.edu', 'Mathematics', '2019-08-20'),
+    ('Emily', 'Davis', 'davisdae@johndoe.edu', 'Physics', '2021-03-10');
 
--- Seed Courses (with prerequisites)
-INSERT INTO Course (course_id, course_name, description, credits, department, level) VALUES
-    ('CS101', 'Introduction to Programming', 'Basic programming concepts using Python', 3, 'Computer Science', 'FRESHMAN'),
-    ('MATH201', 'Calculus I', 'Limits, derivatives, and basic integration', 4, 'Mathematics', 'FRESHMAN'),
-    ('CS201', 'Data Structures', 'Fundamental data structures and algorithms', 3, 'Computer Science', 'SOPHOMORE'),
-    ('MATH301', 'Linear Algebra', 'Vector spaces, matrices, and linear transformations', 3, 'Mathematics', 'JUNIOR'),
-    ('PHY201', 'Classical Mechanics', 'Newtonian mechanics and applications', 4, 'Physics', 'SOPHOMORE');
+-- Seed Courses
+INSERT INTO Course (course_id, course_name, department, credits, description) VALUES
+    ('CS101', 'Introduction to Programming', 'Computer Science', 3, 'Basic programming concepts'),
+    ('MATH201', 'Calculus I', 'Mathematics', 4, 'Limits, derivatives, and integrals'),
+    ('PHYS301', 'Classical Mechanics', 'Physics', 4, 'Newtonian mechanics and applications');
 
--- Update prerequisites (after courses exist)
-UPDATE Course SET prerequisite_id = 'CS101' WHERE course_id = 'CS201';
-UPDATE Course SET prerequisite_id = 'MATH201' WHERE course_id = 'MATH301';
-
--- Seed Sections with JSON schedules
-INSERT INTO Section (course_id, instructor_id, semester, year, room_number, schedule, max_capacity) VALUES
-    ('CS101', 1, 'FALL', 2024, 'CS-105', 
+-- Seed Sections
+INSERT INTO Section (course_id, instructor_id, semester, year, schedule, room_number, max_capacity) VALUES
+    ('CS101', 1, 'FALL', 2024, 
     '{
         "meetings": [
             {
-                "days": ["MON", "WED"],
-                "startTime": "09:00",
-                "endTime": "10:15",
-                "format": "IN_PERSON",
-                "room": "CS-105"
-            },
-            {
-                "days": ["FRI"],
-                "startTime": "09:00",
-                "endTime": "10:15",
-                "format": "LAB",
-                "room": "CS-LAB-1"
+                "days": ["MON", "WED", "FRI"],
+                "startTime": "10:00",
+                "endTime": "10:50",
+                "room": "TECH 101"
             }
         ]
-    }', 30),
-    ('MATH201', 2, 'FALL', 2024, 'MATH-101',
+    }', 'TECH 101', 30),
+    ('MATH201', 3, 'FALL', 2024,
     '{
         "meetings": [
             {
                 "days": ["TUE", "THU"],
-                "startTime": "11:00",
-                "endTime": "12:15",
-                "format": "IN_PERSON",
-                "room": "MATH-101"
+                "startTime": "13:00",
+                "endTime": "14:20",
+                "room": "MATH 201"
             }
         ]
-    }', 35),
-    ('CS201', 5, 'SPRING', 2024, 'CS-203',
+    }', 'MATH 201', 25),
+    ('PHYS301', 4, 'FALL', 2024,
     '{
         "meetings": [
             {
-                "days": ["MON", "WED"],
+                "days": ["MON", "WED", "FRI"],
                 "startTime": "14:00",
-                "endTime": "15:15",
-                "format": "HYBRID",
-                "room": "CS-203"
+                "endTime": "14:50",
+                "room": "PHYS 301"
             }
         ]
-    }', 25);
+    }', 'PHYS 301', 20);
 
--- Seed Enrollments (including waitlist scenario)
-INSERT INTO Enrollment (student_id, section_id, status, grade) VALUES
-    (1, 1, 'ENROLLED', NULL),
-    (2, 1, 'ENROLLED', NULL),
-    (3, 2, 'ENROLLED', NULL),
-    (4, 1, 'WAITLISTED', NULL),
-    (5, 3, 'COMPLETED', 'A');
-
--- Update section enrollment counts
-UPDATE Section 
-SET current_enrollment = (
-    SELECT COUNT(*) 
-    FROM Enrollment 
-    WHERE Enrollment.section_id = Section.section_id 
-    AND status = 'ENROLLED'
-);
-
--- Update section status based on enrollment
-UPDATE Section 
-SET status = CASE 
-    WHEN current_enrollment >= max_capacity THEN 'CLOSED'
-    ELSE 'OPEN'
-END;
+-- Seed Enrollments
+INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
+    (1, 1, '2023-08-15', 'ENROLLED', 'A'),
+    (1, 2, '2023-08-15', 'ENROLLED', 'B+'),
+    (2, 2, '2023-08-16', 'ENROLLED', 'A-'),
+    (3, 3, '2023-08-17', 'ENROLLED', 'B');

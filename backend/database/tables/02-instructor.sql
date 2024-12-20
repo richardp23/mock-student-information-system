@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS Instructor (
     department VARCHAR(50) NOT NULL,
     office_location VARCHAR(50),
     phone VARCHAR(20),
+    hire_date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     

@@ -34,10 +34,7 @@ CREATE TABLE IF NOT EXISTS Section (
         ON UPDATE CASCADE,
     CONSTRAINT chk_section_capacity CHECK (current_enrollment <= max_capacity),
     CONSTRAINT chk_section_year CHECK (year BETWEEN 2000 AND 2100),
-    CONSTRAINT chk_schedule_format CHECK (
-        JSON_VALID(schedule) AND 
-        JSON_EXISTS(schedule, "$.meetings")
-    ),
+    CONSTRAINT chk_schedule_format CHECK (JSON_VALID(schedule)),
     
     -- Indexes
     INDEX idx_section_semester_year (semester, year),

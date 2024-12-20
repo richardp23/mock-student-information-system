@@ -1,0 +1,9 @@
+FROM mysql:8.0
+
+# Copy SQL files in order
+COPY tables/01-student.sql /docker-entrypoint-initdb.d/01-student.sql
+COPY tables/02-instructor.sql /docker-entrypoint-initdb.d/02-instructor.sql
+COPY tables/03-course.sql /docker-entrypoint-initdb.d/03-course.sql
+COPY tables/04-section.sql /docker-entrypoint-initdb.d/04-section.sql
+COPY tables/05-enrollment.sql /docker-entrypoint-initdb.d/05-enrollment.sql
+COPY seed.sql /docker-entrypoint-initdb.d/06-seed.sql 

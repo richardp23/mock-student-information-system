@@ -1,57 +1,112 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Book, Users, Clock } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import api, { Course } from '@/lib/api';
 
-interface Course {
-  id: string;
-  name: string;
-  instructor: string;
-  schedule: string;
-  enrolled: boolean;
-  status: 'OPEN' | 'CLOSED' | 'WAITLIST';
+interface Meeting {
+  days: string[];
+  startTime: string;
+  endTime: string;
+  room: string;
+  format?: string;
 }
 
-const courses: Course[] = [
-  {
-    id: 'CS101',
-    name: 'Introduction to Programming',
-    instructor: 'Dr. Robert Anderson',
-    schedule: 'MWF 9:00 AM - 10:15 AM',
-    enrolled: true,
-    status: 'OPEN'
-  },
-  {
-    id: 'MATH201',
-    name: 'Calculus I',
-    instructor: 'Dr. Sarah Williams',
-    schedule: 'TTH 11:00 AM - 12:15 PM',
-    enrolled: true,
-    status: 'CLOSED'
-  },
-  {
-    id: 'CS201',
-    name: 'Data Structures',
-    instructor: 'Dr. David Brown',
-    schedule: 'MW 2:00 PM - 3:15 PM',
-    enrolled: false,
-    status: 'WAITLIST'
+interface ScheduleData {
+  meetings: Meeting[];
+}
+
+const formatSchedule = (schedule: Course['schedule']): string => {
+  try {
+    if (!schedule?.meetings || !Array.isArray(schedule.meetings)) {
+      return 'Schedule not available';
+    }
+
+    return schedule.meetings.map(meeting => {
+      if (!meeting?.days || !Array.isArray(meeting.days) || !meeting.startTime || !meeting.endTime) {
+        return 'Invalid schedule';
+      }
+      const days = meeting.days.join(', ');
+      const startTime = formatTime(meeting.startTime);
+      const endTime = formatTime(meeting.endTime);
+      return `${days} ${startTime} - ${endTime}`;
+    }).join('; ');
+  } catch (err) {
+    console.error('Error formatting schedule:', err);
+    return 'Schedule not available';
   }
-];
+};
+
+const formatTime = (time: string): string => {
+  try {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  } catch (err) {
+    console.error('Error formatting time:', time);
+    return time;
+  }
+};
 
 export default function CoursesPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const studentId = localStorage.getItem('studentId');
+        
+        if (!studentId) {
+          router.push('/');
+          return;
+        }
+
+        const coursesData = await api.getStudentCourses(parseInt(studentId));
+        setCourses(coursesData);
+      } catch (err) {
+        setError('Failed to load courses data');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Courses</h1>
-        <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-          Add Course
-        </button>
+        <h1 className="text-2xl font-semibold text-gray-900">Current Courses</h1>
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
           {courses.map((course) => (
-            <li key={course.id}>
+            <li key={course.course_id}>
               <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -60,42 +115,26 @@ export default function CoursesPage() {
                     </div>
                     <div className="ml-4">
                       <div className="flex items-center">
-                        <h2 className="text-sm font-medium text-gray-900">{course.id} - {course.name}</h2>
-                        {course.enrolled && (
-                          <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Enrolled
-                          </span>
-                        )}
+                        <h2 className="text-sm font-medium text-gray-900">
+                          {course.course_id} - {course.course_name}
+                        </h2>
+                        <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          {course.credits} Credits
+                        </span>
                       </div>
                       <div className="mt-2 sm:flex sm:justify-between">
                         <div className="sm:flex">
                           <div className="flex items-center text-sm text-gray-500">
                             <Users className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                            {course.instructor}
+                            {course.instructor_name}
                           </div>
                           <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
                             <Clock className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400" />
-                            {course.schedule}
+                            {formatSchedule(course.schedule)}
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    {!course.enrolled && (
-                      <button
-                        className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white 
-                          ${course.status === 'OPEN' 
-                            ? 'bg-blue-600 hover:bg-blue-700' 
-                            : course.status === 'WAITLIST'
-                            ? 'bg-yellow-600 hover:bg-yellow-700'
-                            : 'bg-gray-600 cursor-not-allowed'
-                          } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-                        disabled={course.status === 'CLOSED'}
-                      >
-                        {course.status === 'OPEN' ? 'Enroll' : course.status === 'WAITLIST' ? 'Join Waitlist' : 'Closed'}
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
