@@ -19,7 +19,7 @@ const Logo = () => (
 
 const DemoBanner = () => (
   <div className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white text-center py-2 text-sm">
-    Demo Mode: See <a href="https://github.com/richardp23/mock-student-info-system" className="text-blue-300 hover:text-blue-200 underline">GitHub README</a> for more information
+    Demo Mode: See <a href="https://github.com/richardp23/mock-student-information-system" className="text-blue-300 hover:text-blue-200 underline">GitHub README</a> for more information.
   </div>
 );
 
