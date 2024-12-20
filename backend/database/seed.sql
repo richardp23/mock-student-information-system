@@ -16,11 +16,11 @@ INSERT INTO Student (first_name, last_name, email, date_of_birth, major, enrollm
     ('Bob', 'Johnson', 'bob.johnson23@my.johndoe.edu', '2005-11-30', 'Physics', '2023-09-01', 3.50);
 
 -- Seed Instructors
-INSERT INTO Instructor (first_name, last_name, email, department, hire_date) VALUES
-    ('Alice', 'Williams', 'williama@johndoe.edu', 'Computer Science', '2020-01-15'),
-    ('Andrew', 'Williams', 'williama2@johndoe.edu', 'Computer Science', '2021-08-15'),
-    ('David', 'Brown', 'brownbrd@johndoe.edu', 'Mathematics', '2019-08-20'),
-    ('Emily', 'Davis', 'davisdae@johndoe.edu', 'Physics', '2021-03-10');
+INSERT INTO Instructor (first_name, last_name, email, department, office_location, office_hours, hire_date) VALUES
+    ('Alice', 'Williams', 'williama@johndoe.edu', 'Computer Science', 'TECH 401', 'Monday/Wednesday: 11:00 AM - 12:30 PM\nFriday: 2:00 PM - 4:00 PM', '2020-01-15'),
+    ('Andrew', 'Williams', 'williama2@johndoe.edu', 'Computer Science', 'TECH 402', 'Tuesday/Thursday: 2:30 PM - 4:00 PM\nWednesday: 1:00 PM - 3:00 PM', '2021-08-15'),
+    ('David', 'Brown', 'brownbrd@johndoe.edu', 'Mathematics', 'MATH 301', 'Monday/Wednesday: 2:30 PM - 4:00 PM\nFriday: 10:00 AM - 12:00 PM', '2019-08-20'),
+    ('Emily', 'Davis', 'davisdae@johndoe.edu', 'Physics', 'PHYS 201', 'Tuesday/Thursday: 10:00 AM - 11:30 AM\nFriday: 1:00 PM - 3:00 PM', '2021-03-10');
 
 -- Seed Courses
 INSERT INTO Course (course_id, course_name, department, credits, description) VALUES

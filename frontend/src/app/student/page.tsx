@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Book, GraduationCap, Clock, PlusCircle } from 'lucide-react';
-import api, { Student, Course, Grade } from '@/lib/api';
+import { Book, GraduationCap, Clock, PlusCircle, Users } from 'lucide-react';
+import api, { Student, Course, Grade, Instructor } from '@/lib/api';
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState<Student | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [calculatedGpa, setCalculatedGpa] = useState<number | null>(null);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -25,15 +26,17 @@ export default function StudentDashboard() {
           return;
         }
 
-        const [studentData, coursesData, gradesData] = await Promise.all([
+        const [studentData, coursesData, gradesData, instructorsData] = await Promise.all([
           api.getStudent(parseInt(studentId)),
           api.getStudentCourses(parseInt(studentId)),
-          api.getStudentGrades(parseInt(studentId))
+          api.getStudentGrades(parseInt(studentId)),
+          api.getStudentInstructors(parseInt(studentId))
         ]);
 
         setStudent(studentData);
         setCourses(coursesData);
         setCalculatedGpa(gradesData.gpa);
+        setInstructors(instructorsData);
       } catch (err) {
         setError('Failed to load student data');
         console.error(err);
@@ -72,18 +75,12 @@ export default function StudentDashboard() {
         <h1 className="text-2xl font-semibold text-gray-900">
           Welcome, {student?.first_name} {student?.last_name}
         </h1>
-        <button
-          onClick={handleSignOut}
-          className="text-sm text-gray-600 hover:text-gray-900"
-        >
-          Sign Out
-        </button>
       </div>
       
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {/* Current Courses */}
-        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md flex flex-col">
+          <div className="p-5 flex-1">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Book className="h-6 w-6 text-blue-500" />
@@ -106,18 +103,18 @@ export default function StudentDashboard() {
             <div className="text-sm">
               <Link
                 href="/student/courses"
-                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center space-x-1"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
               >
                 <span>View all courses</span>
-                <span aria-hidden="true">&rarr;</span>
+                <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
               </Link>
             </div>
           </div>
         </div>
 
         {/* Course Registration */}
-        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md flex flex-col">
+          <div className="p-5 flex-1">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <PlusCircle className="h-6 w-6 text-blue-500" />
@@ -138,18 +135,18 @@ export default function StudentDashboard() {
             <div className="text-sm">
               <Link
                 href="/student/register"
-                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center space-x-1"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
               >
                 <span>Register now</span>
-                <span aria-hidden="true">&rarr;</span>
+                <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
               </Link>
             </div>
           </div>
         </div>
 
         {/* GPA */}
-        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md flex flex-col">
+          <div className="p-5 flex-1">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <GraduationCap className="h-6 w-6 text-blue-500" />
@@ -172,18 +169,18 @@ export default function StudentDashboard() {
             <div className="text-sm">
               <Link
                 href="/student/grades"
-                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center space-x-1"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
               >
                 <span>View transcript</span>
-                <span aria-hidden="true">&rarr;</span>
+                <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
               </Link>
             </div>
           </div>
         </div>
 
         {/* Schedule */}
-        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md">
-          <div className="p-5">
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md flex flex-col">
+          <div className="p-5 flex-1">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <Clock className="h-6 w-6 text-blue-500" />
@@ -204,10 +201,44 @@ export default function StudentDashboard() {
             <div className="text-sm">
               <Link
                 href="/student/schedule"
-                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center space-x-1"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
               >
                 <span>View schedule</span>
-                <span aria-hidden="true">&rarr;</span>
+                <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Instructors */}
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md flex flex-col">
+          <div className="p-5 flex-1">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <Users className="h-6 w-6 text-blue-500" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Course Instructors
+                  </dt>
+                  <dd className="flex items-baseline">
+                    <div className="text-2xl font-semibold text-gray-900">
+                      {instructors.length}
+                    </div>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-5 py-3">
+            <div className="text-sm">
+              <Link
+                href="/student/instructors"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
+              >
+                <span>View instructor details</span>
+                <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
               </Link>
             </div>
           </div>

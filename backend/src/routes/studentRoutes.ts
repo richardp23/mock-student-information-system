@@ -195,4 +195,34 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
   }
 });
 
+// Get student's instructors
+router.get('/:studentId/instructors', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const studentId = parseInt(req.params.studentId);
+    const [instructors] = await pool.execute<RowDataPacket[]>(`
+      SELECT DISTINCT
+        i.instructor_id,
+        i.first_name,
+        i.last_name,
+        i.email,
+        i.office_hours,
+        i.office_location,
+        c.course_id,
+        c.course_name
+      FROM Enrollment e
+      JOIN Section s ON e.section_id = s.section_id
+      JOIN Instructor i ON s.instructor_id = i.instructor_id
+      JOIN Course c ON s.course_id = c.course_id
+      WHERE e.student_id = ?
+      AND e.status = 'ENROLLED'
+      ORDER BY c.course_id
+    `, [studentId]);
+
+    res.json(instructors);
+  } catch (error) {
+    console.error('Error fetching student instructors:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export default router; 

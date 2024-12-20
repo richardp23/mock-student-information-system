@@ -9,9 +9,22 @@ const STUDENT_MAP: { [key: string]: number } = {
   'bob.johnson23@my.johndoe.edu': 3
 };
 
+const Logo = () => (
+  <div className="text-center mb-6">
+    <div className="text-4xl font-bold text-blue-600 tracking-tight">JDU</div>
+    <div className="text-lg text-gray-600 font-semibold mt-1">John Doe University</div>
+    <div className="text-sm text-gray-500 italic">Est. 2024</div>
+  </div>
+);
+
+const DemoBanner = () => (
+  <div className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white text-center py-2 text-sm">
+    Demo Mode: See <a href="https://github.com/richardp23/mock-student-info-system" className="text-blue-300 hover:text-blue-200 underline">GitHub README</a> for more information
+  </div>
+);
+
 export default function Home() {
   const router = useRouter();
-  const [role, setRole] = useState<'student' | 'admin'>('student');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,55 +32,25 @@ export default function Home() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (role === 'student') {
-      const studentId = STUDENT_MAP[email];
-      if (studentId) {
-        // Store the student ID in localStorage
-        localStorage.setItem('studentId', studentId.toString());
-        router.push('/student');
-      } else {
-        setError('Invalid student email address');
-      }
+    const studentId = STUDENT_MAP[email];
+    if (studentId) {
+      localStorage.setItem('studentId', studentId.toString());
+      router.push('/student');
     } else {
-      // Handle admin login
-      router.push('/admin');
+      setError('Invalid student email address');
     }
   };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <Logo />
         <h1 className="text-2xl font-bold text-center text-gray-900 mb-8">
           Student Information System
         </h1>
         
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-6">
-            <div className="flex justify-center space-x-6">
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  name="role"
-                  value="student"
-                  checked={role === 'student'}
-                  onChange={(e) => setRole(e.target.value as 'student' | 'admin')}
-                />
-                <span className="ml-2 text-gray-700">Student</span>
-              </label>
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  name="role"
-                  value="admin"
-                  checked={role === 'admin'}
-                  onChange={(e) => setRole(e.target.value as 'student' | 'admin')}
-                />
-                <span className="ml-2 text-gray-700">Administrator</span>
-              </label>
-            </div>
-
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">
                 Email
@@ -78,7 +61,7 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your email"
+                placeholder="Enter your student email"
               />
             </div>
 
@@ -111,6 +94,7 @@ export default function Home() {
           </button>
         </form>
       </div>
+      <DemoBanner />
     </main>
   );
 }

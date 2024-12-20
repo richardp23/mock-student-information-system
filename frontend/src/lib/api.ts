@@ -79,6 +79,17 @@ export interface AvailableSection {
   status: 'OPEN' | 'CLOSED' | 'CANCELLED';
 }
 
+export interface Instructor {
+  instructor_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  office_hours: string;
+  office_location: string;
+  course_id: string;
+  course_name: string;
+}
+
 const api = {
   // Student details
   getStudent: async (studentId: number): Promise<Student> => {
@@ -115,6 +126,12 @@ const api = {
       }
       throw new Error('Failed to register for course');
     }
+  },
+
+  // Get student's instructors
+  getStudentInstructors: async (studentId: number): Promise<Instructor[]> => {
+    const { data } = await axiosInstance.get<Instructor[]>(`/students/${studentId}/instructors`);
+    return data;
   }
 };
 
