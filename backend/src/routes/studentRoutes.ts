@@ -118,8 +118,39 @@ router.get('/:studentId', async (req: Request, res: Response): Promise<void> => 
 router.get('/:studentId/courses', async (req: Request, res: Response): Promise<void> => {
   try {
     const studentId = parseInt(req.params.studentId);
-    const courses = await studentService.getStudentCourses(studentId);
-    res.json(courses);
+    const [courses] = await pool.execute<RowDataPacket[]>(`
+      SELECT 
+        c.course_id,
+        c.course_name,
+        c.credits,
+        c.department,
+        CONCAT(i.first_name, ' ', i.last_name) as instructor_name,
+        s.section_id,
+        s.schedule,
+        e.status as enrollment_status
+      FROM Enrollment e
+      JOIN Section s ON e.section_id = s.section_id
+      JOIN Course c ON s.course_id = c.course_id
+      JOIN Instructor i ON s.instructor_id = i.instructor_id
+      WHERE e.student_id = ?
+      AND e.status IN ('ENROLLED', 'WAITLISTED')
+      AND s.semester = 'FALL'
+      AND s.year = 2024
+      ORDER BY 
+        CASE e.status
+          WHEN 'ENROLLED' THEN 1
+          WHEN 'WAITLISTED' THEN 2
+          ELSE 3
+        END,
+        c.course_id
+    `, [studentId]);
+
+    const mappedCourses = courses.map(course => ({
+      ...course,
+      schedule: typeof course.schedule === 'string' ? JSON.parse(course.schedule) : course.schedule
+    }));
+
+    res.json(mappedCourses);
   } catch (error) {
     console.error('Error fetching student courses:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -216,11 +247,31 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
         throw new Error('Section is full and waitlist is full');
       }
 
-      // Create enrollment (trigger will check prerequisites and duplicates)
-      await connection.query(
-        'INSERT INTO Enrollment (student_id, section_id, status, enrollment_date) VALUES (?, ?, ?, NOW())',
-        [studentId, sectionId, enrollmentStatus]
-      );
+      // Check for existing dropped enrollment for this course
+      const [droppedEnrollments] = await connection.query<RowDataPacket[]>(`
+        SELECT e.enrollment_id
+        FROM Enrollment e
+        JOIN Section s1 ON e.section_id = s1.section_id
+        JOIN Section s2 ON s2.course_id = s1.course_id
+        WHERE e.student_id = ?
+        AND s2.section_id = ?
+        AND e.status = 'DROPPED'
+        LIMIT 1
+      `, [studentId, sectionId]);
+
+      if (droppedEnrollments.length > 0) {
+        // Update the existing dropped enrollment
+        await connection.query(
+          'UPDATE Enrollment SET status = ?, section_id = ? WHERE enrollment_id = ?',
+          [enrollmentStatus, sectionId, droppedEnrollments[0].enrollment_id]
+        );
+      } else {
+        // Create a new enrollment
+        await connection.query(
+          'INSERT INTO Enrollment (student_id, section_id, status, enrollment_date) VALUES (?, ?, ?, NOW())',
+          [studentId, sectionId, enrollmentStatus]
+        );
+      }
 
       await connection.commit();
       console.log('Registration successful with status:', enrollmentStatus);
@@ -296,6 +347,68 @@ router.get('/:studentId/instructors', async (req: Request, res: Response): Promi
   } catch (error) {
     console.error('Error fetching student instructors:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Drop a course
+router.put('/:studentId/courses/:sectionId/drop', async (req: Request, res: Response): Promise<void> => {
+  const connection = await pool.getConnection();
+  
+  try {
+    const studentId = parseInt(req.params.studentId);
+    const sectionId = parseInt(req.params.sectionId);
+
+    console.log('Attempting to drop course:', { studentId, sectionId });
+
+    // Start transaction
+    await connection.beginTransaction();
+
+    try {
+      // Find the current enrollment and make sure it exists
+      const [enrollments] = await connection.query<RowDataPacket[]>(
+        `SELECT 
+          e.enrollment_id, 
+          e.status
+        FROM Enrollment e
+        WHERE e.student_id = ? 
+        AND e.section_id = ? 
+        AND e.status IN ('ENROLLED', 'WAITLISTED')`,
+        [studentId, sectionId]
+      );
+
+      if (enrollments.length === 0) {
+        await connection.rollback();
+        res.status(404).json({ message: 'Enrollment not found' });
+        return;
+      }
+
+      const enrollment = enrollments[0];
+
+      // Update the enrollment status to DROPPED
+      // The after_enrollment_update trigger will handle updating section counts
+      await connection.query(
+        'UPDATE Enrollment SET status = "DROPPED" WHERE enrollment_id = ?',
+        [enrollment.enrollment_id]
+      );
+
+      await connection.commit();
+      console.log('Successfully dropped course');
+      res.json({ message: 'Course dropped successfully' });
+    } catch (error) {
+      console.error('Error in drop course transaction:', error);
+      await connection.rollback();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error dropping course:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  } finally {
+    connection.release();
   }
 });
 

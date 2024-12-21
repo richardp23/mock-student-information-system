@@ -44,12 +44,14 @@ export interface Course {
   credits: number;
   department: string;
   instructor_name: string;
+  section_id: number;
+  enrollment_status: 'ENROLLED' | 'WAITLISTED' | 'DROPPED' | 'COMPLETED';
   schedule: {
     meetings: Array<{
-      day: string;
-      start_time: string;
-      end_time: string;
-      location: string;
+      days: string[];
+      startTime: string;
+      endTime: string;
+      room: string;
     }>;
   };
 }
@@ -117,6 +119,10 @@ const api = {
 
   registerForCourse: async (studentId: number, sectionId: number): Promise<void> => {
     await axiosInstance.post(`/students/${studentId}/courses/${sectionId}`);
+  },
+
+  dropCourse: async (studentId: number, sectionId: number): Promise<void> => {
+    await axiosInstance.put(`/students/${studentId}/courses/${sectionId}/drop`);
   },
 
   getStudentCourses: async (studentId: number): Promise<Course[]> => {

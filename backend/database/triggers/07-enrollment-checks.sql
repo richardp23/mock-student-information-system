@@ -25,6 +25,7 @@ BEGIN
     DECLARE has_existing_enrollment BOOLEAN;
     DECLARE prerequisite_id VARCHAR(10);
     DECLARE has_completed_prerequisite BOOLEAN;
+    DECLARE has_completed_course BOOLEAN;
 
     -- Get the course_id and section details for the section being enrolled in
     SELECT s.course_id, s.max_capacity, s.current_enrollment, s.max_waitlist, s.current_waitlist
@@ -32,19 +33,36 @@ BEGIN
     FROM Section s 
     WHERE s.section_id = NEW.section_id;
 
-    -- Check if student is already enrolled in or has completed this course
+    -- Check if student has completed this course with a passing grade
     SELECT EXISTS (
         SELECT 1 
         FROM Enrollment e 
         JOIN Section s ON e.section_id = s.section_id 
         WHERE e.student_id = NEW.student_id 
         AND s.course_id = course_id
-        AND e.status IN ('ENROLLED', 'COMPLETED', 'WAITLISTED')
+        AND e.status = 'COMPLETED'
+        AND e.grade NOT IN ('F', 'D', 'D+')
+    ) INTO has_completed_course;
+
+    IF has_completed_course THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Cannot register for a course that has been successfully completed';
+    END IF;
+
+    -- Check if student is currently enrolled in or waitlisted for any section of this course
+    -- Explicitly exclude DROPPED status
+    SELECT EXISTS (
+        SELECT 1 
+        FROM Enrollment e 
+        JOIN Section s ON e.section_id = s.section_id 
+        WHERE e.student_id = NEW.student_id 
+        AND s.course_id = course_id
+        AND e.status IN ('ENROLLED', 'WAITLISTED')
     ) INTO has_existing_enrollment;
 
     IF has_existing_enrollment THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Student is already enrolled in, waitlisted for, or has completed this course';
+        SET MESSAGE_TEXT = 'Student is already enrolled in or waitlisted for another section of this course';
     END IF;
 
     -- Check prerequisites before allowing enrollment or waitlist
@@ -121,27 +139,27 @@ FOR EACH ROW
 BEGIN
     -- Handle enrollment count changes
     IF OLD.status != NEW.status THEN
-        CASE
-            WHEN OLD.status = 'ENROLLED' THEN
-                UPDATE Section 
-                SET current_enrollment = current_enrollment - 1
-                WHERE section_id = NEW.section_id;
-            WHEN OLD.status = 'WAITLISTED' THEN
-                UPDATE Section 
-                SET current_waitlist = current_waitlist - 1
-                WHERE section_id = NEW.section_id;
-        END CASE;
+        -- Handle decrements for old status
+        IF OLD.status = 'ENROLLED' THEN
+            UPDATE Section 
+            SET current_enrollment = current_enrollment - 1
+            WHERE section_id = NEW.section_id;
+        ELSEIF OLD.status = 'WAITLISTED' THEN
+            UPDATE Section 
+            SET current_waitlist = current_waitlist - 1
+            WHERE section_id = NEW.section_id;
+        END IF;
 
-        CASE
-            WHEN NEW.status = 'ENROLLED' THEN
-                UPDATE Section 
-                SET current_enrollment = current_enrollment + 1
-                WHERE section_id = NEW.section_id;
-            WHEN NEW.status = 'WAITLISTED' THEN
-                UPDATE Section 
-                SET current_waitlist = current_waitlist + 1
-                WHERE section_id = NEW.section_id;
-        END CASE;
+        -- Handle increments for new status
+        IF NEW.status = 'ENROLLED' THEN
+            UPDATE Section 
+            SET current_enrollment = current_enrollment + 1
+            WHERE section_id = NEW.section_id;
+        ELSEIF NEW.status = 'WAITLISTED' THEN
+            UPDATE Section 
+            SET current_waitlist = current_waitlist + 1
+            WHERE section_id = NEW.section_id;
+        END IF;
     END IF;
 
     -- Handle grade updates

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Book, Users, Clock, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import api, { Course } from '@/lib/api';
+import { toast } from 'react-hot-toast';
 
 interface Meeting {
   days: string[];
@@ -56,6 +57,7 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [droppingCourse, setDroppingCourse] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,6 +82,30 @@ export default function CoursesPage() {
 
     fetchData();
   }, [router]);
+
+  const handleDropCourse = async (course: Course) => {
+    try {
+      setDroppingCourse(course.course_id);
+      const studentId = localStorage.getItem('studentId');
+      
+      if (!studentId) {
+        router.push('/');
+        return;
+      }
+
+      await api.dropCourse(parseInt(studentId), course.section_id);
+      
+      // Refresh the courses list
+      const coursesData = await api.getStudentCourses(parseInt(studentId));
+      setCourses(coursesData);
+      toast.success('Course dropped successfully');
+    } catch (err) {
+      console.error('Error dropping course:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to drop course');
+    } finally {
+      setDroppingCourse(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -145,6 +171,20 @@ export default function CoursesPage() {
                       </div>
                     </div>
                   </div>
+                  <button
+                    onClick={() => handleDropCourse(course)}
+                    disabled={droppingCourse === course.course_id}
+                    className={`ml-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {droppingCourse === course.course_id ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Dropping...
+                      </div>
+                    ) : (
+                      'Drop Course'
+                    )}
+                  </button>
                 </div>
               </div>
             </li>
@@ -202,6 +242,20 @@ export default function CoursesPage() {
                         </div>
                       </div>
                     </div>
+                    <button
+                      onClick={() => handleDropCourse(course)}
+                      disabled={droppingCourse === course.course_id}
+                      className={`ml-4 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {droppingCourse === course.course_id ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Dropping...
+                        </div>
+                      ) : (
+                        'Drop Course'
+                      )}
+                    </button>
                   </div>
                 </div>
               </li>
