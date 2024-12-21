@@ -118,6 +118,8 @@ router.get('/:studentId', async (req: Request, res: Response): Promise<void> => 
 router.get('/:studentId/courses', async (req: Request, res: Response): Promise<void> => {
   try {
     const studentId = parseInt(req.params.studentId);
+    const includeWaitlisted = req.query.includeWaitlisted === 'true';
+
     const [courses] = await pool.execute<RowDataPacket[]>(`
       SELECT 
         c.course_id,
@@ -133,7 +135,7 @@ router.get('/:studentId/courses', async (req: Request, res: Response): Promise<v
       JOIN Course c ON s.course_id = c.course_id
       JOIN Instructor i ON s.instructor_id = i.instructor_id
       WHERE e.student_id = ?
-      AND e.status IN ('ENROLLED', 'WAITLISTED')
+      AND e.status IN (${includeWaitlisted ? "'ENROLLED', 'WAITLISTED'" : "'ENROLLED'"})
       AND s.semester = 'FALL'
       AND s.year = 2024
       ORDER BY 

@@ -70,7 +70,7 @@ export default function CoursesPage() {
           return;
         }
 
-        const coursesData = await api.getStudentCourses(parseInt(studentId));
+        const coursesData = await api.getStudentCourses(parseInt(studentId), true);
         setCourses(coursesData);
       } catch (err) {
         setError('Failed to load courses data');
@@ -96,7 +96,7 @@ export default function CoursesPage() {
       await api.dropCourse(parseInt(studentId), course.section_id);
       
       // Refresh the courses list
-      const coursesData = await api.getStudentCourses(parseInt(studentId));
+      const coursesData = await api.getStudentCourses(parseInt(studentId), true);
       setCourses(coursesData);
       toast.success('Course dropped successfully');
     } catch (err) {

@@ -125,8 +125,8 @@ const api = {
     await axiosInstance.put(`/students/${studentId}/courses/${sectionId}/drop`);
   },
 
-  getStudentCourses: async (studentId: number): Promise<Course[]> => {
-    const { data } = await axiosInstance.get<Course[]>(`/students/${studentId}/courses`);
+  getStudentCourses: async (studentId: number, includeWaitlisted: boolean = false): Promise<Course[]> => {
+    const { data } = await axiosInstance.get<Course[]>(`/students/${studentId}/courses?includeWaitlisted=${includeWaitlisted}`);
     return data;
   },
 

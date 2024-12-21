@@ -88,7 +88,7 @@ INSERT INTO Section (course_id, instructor_id, semester, year, schedule, room_nu
                 "room": "TECH 101"
             }
         ]
-    }', 'TECH 101', 3, 3, 5, 2, 'WAITLIST_AVAILABLE'),
+    }', 'TECH 101', 3, 3, 5, 0, 'WAITLIST_AVAILABLE'),
     
     -- CS101 Section 2 (Regular section)
     ('CS101', 2, 'FALL', 2024,
@@ -140,7 +140,7 @@ INSERT INTO Section (course_id, instructor_id, semester, year, schedule, room_nu
                 "room": "MATH 101"
             }
         ]
-    }', 'MATH 101', 2, 2, 3, 1, 'WAITLIST_AVAILABLE'),
+    }', 'MATH 101', 2, 2, 3, 0, 'WAITLIST_AVAILABLE'),
     ('MATH201', 3, 'FALL', 2024,
     '{
         "meetings": [
@@ -183,8 +183,9 @@ INSERT INTO Section (course_id, instructor_id, semester, year, schedule, room_nu
 -- Group 1: Spring 2024 CS101 completions
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
     (1, 1, '2024-01-15', 'COMPLETED', 'A'),
-    (2, 1, '2024-01-15', 'COMPLETED', 'A-'),
-    (3, 1, '2024-01-15', 'COMPLETED', 'B+');
+    (2, 1, '2024-01-15', 'COMPLETED', 'A-'),  -- Jane completes CS101
+    (3, 1, '2024-01-15', 'COMPLETED', 'B+'),
+    (5, 1, '2024-01-15', 'COMPLETED', 'B+');  -- Charlie completes CS101
 
 -- Group 2: Spring 2024 MATH201 completions
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
@@ -194,34 +195,33 @@ INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) 
 -- Group 3: Spring 2024 CS201 completions
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
     (1, 3, '2024-01-15', 'COMPLETED', 'B+'),
-    (2, 3, '2024-01-15', 'COMPLETED', 'A-'),
+    (2, 3, '2024-01-15', 'COMPLETED', 'A-'),  -- Jane completes CS201
     (3, 3, '2024-01-15', 'COMPLETED', 'B');
 
--- Group 4: Fall 2024 CS101 Section 1 enrollments
+-- Group 4: Fall 2024 CS101 Section 1 enrollments (remove students who completed it)
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
     (6, 4, '2024-08-15', 'ENROLLED', NULL),
     (7, 4, '2024-08-15', 'ENROLLED', NULL),
     (8, 4, '2024-08-15', 'ENROLLED', NULL);
 
--- Group 5: Fall 2024 CS201 enrollments
+-- Group 5: Fall 2024 CS201 enrollments (remove students who completed it)
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
-    (2, 6, '2024-08-15', 'ENROLLED', NULL);
+    (5, 6, '2024-08-15', 'ENROLLED', NULL);   -- Charlie can now enroll in CS201 since they completed CS101
 
 -- Group 6: Fall 2024 MATH201 section 1 enrollments
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
     (6, 8, '2024-08-15', 'ENROLLED', NULL),
     (7, 8, '2024-08-15', 'ENROLLED', NULL);
 
--- Group 7: Fall 2024 CS301 enrollments
+-- Group 7: Fall 2024 CS301 enrollments (only students who completed CS201 prerequisite)
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
-    (1, 7, '2024-08-15', 'ENROLLED', NULL),
-    (2, 7, '2024-08-15', 'ENROLLED', NULL),
-    (3, 7, '2024-08-15', 'ENROLLED', NULL);
+    (1, 7, '2024-08-15', 'ENROLLED', NULL),    -- Has completed both CS101 and CS201
+    (2, 7, '2024-08-15', 'WAITLISTED', NULL),  -- Has completed both CS101 and CS201
+    (3, 7, '2024-08-15', 'ENROLLED', NULL);    -- Has completed both CS101 and CS201
 
--- Group 8: Fall 2024 CS101 Section 1 waitlist
+-- Group 8: Fall 2024 CS101 Section 1 waitlist (only students who haven't completed it)
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
-    (9, 4, '2024-08-16', 'WAITLISTED', NULL),
-    (10, 4, '2024-08-17', 'WAITLISTED', NULL);
+    (9, 4, '2024-08-16', 'WAITLISTED', NULL);  -- Only add one student to the waitlist
 
 -- Group 9: Fall 2024 MATH201 section 1 waitlist
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
