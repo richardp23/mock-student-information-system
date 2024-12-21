@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, Users, AlertCircle } from 'lucide-react';
-import api, { AvailableSection } from '@/lib/api';
+import { Clock, Users, AlertCircle, BookOpen, Building2 } from 'lucide-react';
+import api, { Section } from '@/lib/api';
 
 export default function CourseRegistrationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sections, setSections] = useState<AvailableSection[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [registering, setRegistering] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -24,7 +24,7 @@ export default function CourseRegistrationPage() {
           return;
         }
 
-        const availableSections = await api.getAvailableCourses();
+        const availableSections = await api.getAvailableSections();
         setSections(availableSections);
       } catch (err) {
         setError('Failed to load available courses');
@@ -52,7 +52,7 @@ export default function CourseRegistrationPage() {
       setMessage({ type: 'success', text: 'Successfully registered for course!' });
       
       // Refresh the available sections
-      const availableSections = await api.getAvailableCourses();
+      const availableSections = await api.getAvailableSections();
       setSections(availableSections);
     } catch (err) {
       setMessage({ 
@@ -65,11 +65,22 @@ export default function CourseRegistrationPage() {
     }
   };
 
-  const formatSchedule = (schedule: AvailableSection['schedule']): string => {
+  const formatSchedule = (schedule: Section['schedule']): string => {
+    if (!schedule?.meetings?.length) {
+      return 'Schedule not available';
+    }
     return schedule.meetings.map(meeting => {
-      const days = meeting.days.join(', ');
-      return `${days} ${meeting.startTime} - ${meeting.endTime}`;
+      const days = meeting.days?.join(', ') || '';
+      const startTime = meeting.startTime || '';
+      const endTime = meeting.endTime || '';
+      if (!days || !startTime || !endTime) return 'Time not set';
+      return `${days} ${startTime} - ${endTime}`;
     }).join('; ');
+  };
+
+  const getLocation = (schedule: Section['schedule']): string => {
+    if (!schedule?.meetings?.length) return '';
+    return schedule.meetings[0].room || '';
   };
 
   if (loading) {
@@ -125,6 +136,16 @@ export default function CourseRegistrationPage() {
                           <Clock className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
                           <span>{formatSchedule(section.schedule)}</span>
                         </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-500">
+                          <Building2 className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" />
+                          <span>{getLocation(section.schedule)}</span>
+                        </div>
+                        {section.prerequisite && (
+                          <div className="mt-2 flex items-center text-sm text-amber-600">
+                            <BookOpen className="flex-shrink-0 mr-1.5 h-5 w-5 text-amber-500" />
+                            <span>Prerequisite: {section.prerequisite.course_id} - {section.prerequisite.course_name}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="ml-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -140,16 +161,24 @@ export default function CourseRegistrationPage() {
                   <div className="ml-6">
                     <button
                       onClick={() => handleRegister(section.section_id)}
-                      disabled={registering || section.available_seats <= 0}
+                      disabled={registering || section.available_seats <= 0 || section.is_enrolled}
                       className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white 
                         ${registering 
                           ? 'bg-gray-400 cursor-not-allowed'
-                          : section.available_seats <= 0
-                            ? 'bg-red-400 cursor-not-allowed'
-                            : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                          : section.is_enrolled
+                            ? 'bg-green-500 cursor-not-allowed'
+                            : section.available_seats <= 0
+                              ? 'bg-red-400 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
                         }`}
                     >
-                      {registering ? 'Registering...' : section.available_seats <= 0 ? 'Full' : 'Register'}
+                      {registering 
+                        ? 'Registering...' 
+                        : section.is_enrolled 
+                          ? 'Registered' 
+                          : section.available_seats <= 0 
+                            ? 'Full' 
+                            : 'Register'}
                     </button>
                   </div>
                 </div>

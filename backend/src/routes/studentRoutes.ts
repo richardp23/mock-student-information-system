@@ -6,9 +6,17 @@ import { RowDataPacket } from 'mysql2';
 const router = Router();
 
 // Get available sections - needs to be before /:studentId routes to avoid conflict
-router.get('/available-sections', async (_req: Request, res: Response): Promise<void> => {
+router.get('/available-sections', async (req: Request, res: Response): Promise<void> => {
   try {
+    const studentId = req.query.studentId ? parseInt(req.query.studentId as string) : null;
+
     const [sections] = await pool.execute<RowDataPacket[]>(`
+      WITH enrollment_counts AS (
+        SELECT section_id, COUNT(*) as enrolled_count
+        FROM Enrollment
+        WHERE status = 'ENROLLED'
+        GROUP BY section_id
+      )
       SELECT 
         s.section_id,
         s.course_id,
@@ -16,26 +24,68 @@ router.get('/available-sections', async (_req: Request, res: Response): Promise<
         CONCAT(i.first_name, ' ', i.last_name) as instructor_name,
         s.schedule,
         s.max_capacity,
-        (s.max_capacity - (
-          SELECT COUNT(*) 
-          FROM Enrollment e 
-          WHERE e.section_id = s.section_id 
-          AND e.status = 'ENROLLED'
-        )) as available_seats,
-        s.status
+        COALESCE(s.max_capacity - ec.enrolled_count, s.max_capacity) as available_seats,
+        s.status,
+        CASE WHEN e.student_id IS NOT NULL THEN 1 ELSE 0 END as is_enrolled,
+        c.prerequisite_id,
+        pc.course_name as prerequisite_name,
+        CONCAT(c.prerequisite_id, ':', pc.course_name) as debug_prereq
       FROM Section s
       JOIN Course c ON s.course_id = c.course_id
+      LEFT JOIN Course pc ON c.prerequisite_id = pc.course_id
       JOIN Instructor i ON s.instructor_id = i.instructor_id
+      LEFT JOIN enrollment_counts ec ON s.section_id = ec.section_id
+      LEFT JOIN Enrollment e ON s.section_id = e.section_id 
+        AND e.student_id = ?
+        AND e.status = 'ENROLLED'
       WHERE s.status = 'OPEN'
       ORDER BY s.course_id
-    `);
+    `, [studentId || null]);
 
-    console.log('Available sections:', sections);
-    res.json(sections.map(section => ({
-      ...section,
-      available_seats: section.available_seats,
-      max_capacity: section.max_capacity
-    })));
+    console.log('Raw sections with debug info:', JSON.stringify(sections, null, 2));
+    const mappedSections = sections.map(section => {
+      let parsedSchedule;
+      try {
+        parsedSchedule = typeof section.schedule === 'string' 
+          ? JSON.parse(section.schedule)
+          : section.schedule;
+      } catch (e) {
+        console.error('Error parsing schedule:', e);
+        parsedSchedule = section.schedule;
+      }
+
+      console.log('Processing section:', {
+        course_id: section.course_id,
+        prerequisite_id: section.prerequisite_id,
+        prerequisite_name: section.prerequisite_name,
+        debug_prereq: section.debug_prereq
+      });
+
+      const result = {
+        section_id: section.section_id,
+        course_id: section.course_id,
+        course_name: section.course_name,
+        instructor_name: section.instructor_name,
+        schedule: parsedSchedule,
+        available_seats: Number(section.available_seats),
+        max_capacity: Number(section.max_capacity),
+        status: section.status,
+        is_enrolled: Boolean(section.is_enrolled),
+        prerequisite: null as { course_id: string; course_name: string } | null
+      };
+
+      if (section.prerequisite_id && section.prerequisite_name) {
+        result.prerequisite = {
+          course_id: section.prerequisite_id,
+          course_name: section.prerequisite_name
+        };
+      }
+
+      return result;
+    });
+
+    console.log('Final mapped sections:', JSON.stringify(mappedSections, null, 2));
+    res.json(mappedSections);
   } catch (error) {
     console.error('Error fetching available sections:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -131,40 +181,11 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
       return;
     }
 
-    // Check if section exists and has space
-    const [sections] = await connection.query<RowDataPacket[]>(
-      'SELECT * FROM Section WHERE section_id = ? AND current_enrollment < max_capacity AND status = "OPEN"',
-      [sectionId]
-    );
-
-    const section = sections[0];
-    console.log('Section found:', section);
-
-    if (!section) {
-      res.status(400).json({ message: 'Section is not available for registration' });
-      return;
-    }
-
-    // Check if student is already enrolled
-    const [enrollments] = await connection.query<RowDataPacket[]>(
-      'SELECT * FROM Enrollment WHERE student_id = ? AND section_id = ? AND status = "ENROLLED"',
-      [studentId, sectionId]
-    );
-
-    console.log('Existing enrollment:', enrollments[0]);
-
-    if (enrollments.length > 0) {
-      res.status(400).json({ message: 'Already enrolled in this course' });
-      return;
-    }
-
-    console.log('Starting enrollment transaction');
-    
     // Start transaction
     await connection.beginTransaction();
 
     try {
-      // Create enrollment
+      // Create enrollment (trigger will check prerequisites and capacity)
       await connection.query(
         'INSERT INTO Enrollment (student_id, section_id, status, enrollment_date) VALUES (?, ?, "ENROLLED", NOW())',
         [studentId, sectionId]
@@ -178,18 +199,36 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
 
       await connection.commit();
       console.log('Registration successful');
-      res.status(201).json({ message: 'Successfully registered for course' });
+      res.status(201).json({ message: 'Successfully registered for course!' });
     } catch (error) {
-      console.error('Transaction error:', error);
       await connection.rollback();
+      
+      // Check for specific database errors
+      if (error instanceof Error) {
+        if (error.message.includes('Prerequisites not met')) {
+          res.status(400).json({ message: error.message });
+          return;
+        }
+        if (error.message.includes('Section is full')) {
+          res.status(400).json({ message: 'Section is full!' });
+          return;
+        }
+        if (error.message.includes('Duplicate entry')) {
+          res.status(400).json({ message: 'Already enrolled in this course!' });
+          return;
+        }
+      }
+      
       throw error;
     }
   } catch (error) {
     console.error('Error registering for course:', error);
-    res.status(500).json({ 
-      message: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   } finally {
     connection.release();
   }

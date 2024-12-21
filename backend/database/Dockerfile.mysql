@@ -3,14 +3,22 @@ FROM mysql:8.0
 # Create directory for SQL files
 RUN mkdir -p /docker-entrypoint-initdb.d
 
-# Copy SQL files in order
-COPY ./00-init.sql /docker-entrypoint-initdb.d/00-init.sql
-COPY ./tables/01-student.sql /docker-entrypoint-initdb.d/01-student.sql
-COPY ./tables/02-instructor.sql /docker-entrypoint-initdb.d/02-instructor.sql
-COPY ./tables/03-course.sql /docker-entrypoint-initdb.d/03-course.sql
-COPY ./tables/04-section.sql /docker-entrypoint-initdb.d/04-section.sql
-COPY ./tables/05-enrollment.sql /docker-entrypoint-initdb.d/05-enrollment.sql
-COPY ./seed.sql /docker-entrypoint-initdb.d/06-seed.sql
+# Copy files in correct execution order:
+# 1. Database initialization
+COPY ./init/01-init.sql /docker-entrypoint-initdb.d/01-init.sql
+
+# 2. Schema (tables)
+COPY ./schema/02-student.sql /docker-entrypoint-initdb.d/02-student.sql
+COPY ./schema/03-instructor.sql /docker-entrypoint-initdb.d/03-instructor.sql
+COPY ./schema/04-course.sql /docker-entrypoint-initdb.d/04-course.sql
+COPY ./schema/05-section.sql /docker-entrypoint-initdb.d/05-section.sql
+COPY ./schema/06-enrollment.sql /docker-entrypoint-initdb.d/06-enrollment.sql
+
+# 3. Triggers
+COPY ./triggers/07-enrollment-checks.sql /docker-entrypoint-initdb.d/07-triggers.sql
+
+# 4. Seed data
+COPY ./seed/08-sample-data.sql /docker-entrypoint-initdb.d/08-seed.sql
 
 # Set permissions and verify files exist
 RUN chmod 644 /docker-entrypoint-initdb.d/* && \

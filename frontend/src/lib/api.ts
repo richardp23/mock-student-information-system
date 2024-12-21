@@ -15,6 +15,9 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.response.use(
   response => response,
   error => {
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
     if (error.response?.status === 404) {
       throw new Error('Resource not found');
     }
@@ -40,10 +43,10 @@ export interface Course {
   instructor_name: string;
   schedule: {
     meetings: Array<{
-      days: string[];
-      startTime: string;
-      endTime: string;
-      room: string;
+      day: string;
+      start_time: string;
+      end_time: string;
+      location: string;
     }>;
   };
 }
@@ -61,22 +64,31 @@ export interface GradesResponse {
   gpa: number;
 }
 
-export interface AvailableSection {
+export interface Meeting {
+  days: string[];
+  room: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface Schedule {
+  meetings: Meeting[];
+}
+
+export interface Section {
   section_id: number;
   course_id: string;
   course_name: string;
   instructor_name: string;
-  schedule: {
-    meetings: Array<{
-      days: string[];
-      startTime: string;
-      endTime: string;
-      room: string;
-    }>;
-  };
+  schedule: Schedule;
   max_capacity: number;
   available_seats: number;
-  status: 'OPEN' | 'CLOSED' | 'CANCELLED';
+  status: string;
+  is_enrolled: boolean;
+  prerequisite?: {
+    course_id: string;
+    course_name: string;
+  };
 }
 
 export interface Instructor {
@@ -91,46 +103,33 @@ export interface Instructor {
 }
 
 const api = {
-  // Student details
-  getStudent: async (studentId: number): Promise<Student> => {
-    const { data } = await axiosInstance.get<Student>(`/students/${studentId}`);
+  getAvailableSections: async (): Promise<Section[]> => {
+    const studentId = localStorage.getItem('studentId');
+    const { data } = await axiosInstance.get<Section[]>(`/students/available-sections${studentId ? `?studentId=${studentId}` : ''}`);
     return data;
   },
 
-  // Student's courses
+  registerForCourse: async (studentId: number, sectionId: number): Promise<void> => {
+    await axiosInstance.post(`/students/${studentId}/courses/${sectionId}`);
+  },
+
   getStudentCourses: async (studentId: number): Promise<Course[]> => {
     const { data } = await axiosInstance.get<Course[]>(`/students/${studentId}/courses`);
     return data;
   },
 
-  // Student's grades
   getStudentGrades: async (studentId: number): Promise<GradesResponse> => {
     const { data } = await axiosInstance.get<GradesResponse>(`/students/${studentId}/grades`);
     return data;
   },
 
-  // Get available courses for registration
-  getAvailableCourses: async (): Promise<AvailableSection[]> => {
-    const { data } = await axiosInstance.get<AvailableSection[]>('/students/available-sections');
+  getStudentInstructors: async (studentId: number): Promise<Instructor[]> => {
+    const { data } = await axiosInstance.get<Instructor[]>(`/students/${studentId}/instructors`);
     return data;
   },
 
-  // Register for a course
-  registerForCourse: async (studentId: number, sectionId: number): Promise<void> => {
-    try {
-      await axiosInstance.post(`/students/${studentId}/courses/${sectionId}`);
-    } catch (error: any) {
-      // Check for response data in a type-safe way
-      if (error?.response?.data?.message) {
-        throw new Error(error.response.data.message);
-      }
-      throw new Error('Failed to register for course');
-    }
-  },
-
-  // Get student's instructors
-  getStudentInstructors: async (studentId: number): Promise<Instructor[]> => {
-    const { data } = await axiosInstance.get<Instructor[]>(`/students/${studentId}/instructors`);
+  getStudent: async (studentId: number): Promise<Student> => {
+    const { data } = await axiosInstance.get<Student>(`/students/${studentId}`);
     return data;
   }
 };
