@@ -14,7 +14,7 @@ export default function StudentLayout({
     { href: '/student', label: 'Dashboard' },
     { href: '/student/courses', label: 'Courses' },
     { href: '/student/schedule', label: 'Schedule' },
-    { href: '/student/grades', label: 'Grades' },
+    { href: '/student/profile', label: 'Profile' },
   ];
 
   return (

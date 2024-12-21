@@ -37,7 +37,31 @@ INSERT INTO Course (course_id, course_name, department, credits, description, pr
 
 -- Seed Sections with actual capacities
 INSERT INTO Section (course_id, instructor_id, semester, year, schedule, room_number, max_capacity, current_enrollment, status) VALUES
-    -- CS101 Sections (one with 3 seats, one with 30 seats)
+    -- Previous semester sections (Spring 2024)
+    ('CS101', 1, 'SPRING', 2024, 
+    '{
+        "meetings": [
+            {
+                "days": ["MON", "WED", "FRI"],
+                "startTime": "10:00",
+                "endTime": "10:50",
+                "room": "TECH 101"
+            }
+        ]
+    }', 'TECH 101', 30, 3, 'CLOSED'),
+    ('MATH201', 3, 'SPRING', 2024,
+    '{
+        "meetings": [
+            {
+                "days": ["MON", "WED", "FRI"],
+                "startTime": "11:00",
+                "endTime": "11:50",
+                "room": "MATH 101"
+            }
+        ]
+    }', 'MATH 101', 30, 2, 'CLOSED'),
+
+    -- Current semester sections (Fall 2024)
     ('CS101', 1, 'FALL', 2024, 
     '{
         "meetings": [
@@ -139,11 +163,16 @@ INSERT INTO Section (course_id, instructor_id, semester, year, schedule, room_nu
 
 -- Seed Enrollments (trigger will automatically update current_enrollment)
 INSERT INTO Enrollment (student_id, section_id, enrollment_date, status, grade) VALUES
-    -- CS101 Section 1 (will fill up the 3-seat section)
-    (1, 1, '2023-08-15', 'ENROLLED', 'A'),
-    (2, 1, '2023-08-15', 'ENROLLED', 'A-'),
-    (3, 1, '2023-08-15', 'ENROLLED', 'B+'),
+    -- CS101 Section 1 (completed courses from Spring 2024)
+    (1, 1, '2024-01-15', 'COMPLETED', 'A'),
+    (2, 1, '2024-01-15', 'COMPLETED', 'A-'),
+    (3, 1, '2024-01-15', 'COMPLETED', 'B+'),
     
-    -- MATH201 Section 1 (will fill up the 2-seat section)
-    (4, 5, '2023-08-16', 'ENROLLED', 'A'),
-    (5, 5, '2023-08-16', 'ENROLLED', 'A-');
+    -- MATH201 Section 1 (completed courses from Spring 2024)
+    (4, 2, '2024-01-16', 'COMPLETED', 'A'),
+    (5, 2, '2024-01-16', 'COMPLETED', 'A-'),
+
+    -- Current semester enrollments (Fall 2024)
+    -- Jane Doe's current courses
+    (2, 5, '2024-08-15', 'ENROLLED', NULL),  -- CS201 (she completed CS101)
+    (2, 7, '2024-08-15', 'ENROLLED', NULL);  -- MATH201 section 1

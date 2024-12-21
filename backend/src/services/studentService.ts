@@ -60,6 +60,8 @@ export const studentService = {
       JOIN Instructor i ON s.instructor_id = i.instructor_id
       WHERE e.student_id = ?
       AND e.status = 'ENROLLED'
+      AND s.semester = 'FALL'
+      AND s.year = 2024
     `, [studentId]);
     return rows;
   },
@@ -72,15 +74,29 @@ export const studentService = {
         c.course_name,
         c.credits,
         e.grade,
+        e.status,
+        s.semester,
+        s.year,
         CONCAT(i.first_name, ' ', i.last_name) as instructor_name
       FROM Enrollment e
       JOIN Section s ON e.section_id = s.section_id
       JOIN Course c ON s.course_id = c.course_id
       JOIN Instructor i ON s.instructor_id = i.instructor_id
       WHERE e.student_id = ?
-      ORDER BY e.enrollment_date DESC
+      AND e.status IN ('ENROLLED', 'COMPLETED')
+      ORDER BY s.year DESC, 
+               FIELD(s.semester, 'FALL', 'SUMMER', 'SPRING') DESC,
+               e.enrollment_date DESC
     `, [studentId]);
-    return rows;
+    
+    // Transform the rows to handle in-progress courses
+    const transformedRows = rows.map(row => ({
+      ...row,
+      grade: row.status === 'ENROLLED' ? 'In Progress' : row.grade
+    }));
+    
+    console.log('Grades query result:', JSON.stringify(transformedRows, null, 2));
+    return transformedRows;
   },
 
   // Calculate GPA
@@ -93,6 +109,7 @@ export const studentService = {
       JOIN Section s ON e.section_id = s.section_id
       JOIN Course c ON s.course_id = c.course_id
       WHERE e.student_id = ?
+      AND e.status = 'COMPLETED'
       AND e.grade IS NOT NULL
     `, [studentId]);
 

@@ -39,4 +39,4 @@ CREATE TABLE IF NOT EXISTS Section (
     -- Indexes
     INDEX idx_section_semester_year (semester, year),
     INDEX idx_section_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

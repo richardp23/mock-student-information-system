@@ -20,4 +20,4 @@ CREATE TABLE IF NOT EXISTS Course (
     -- Indexes
     INDEX idx_course_department (department),
     FULLTEXT INDEX idx_course_description (description)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

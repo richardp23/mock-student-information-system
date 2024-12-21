@@ -1,5 +1,4 @@
-version: '3.8'
-
+name: mock_student_information_system_db
 services:
   mysql:
     build:

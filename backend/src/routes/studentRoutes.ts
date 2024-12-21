@@ -185,16 +185,10 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
     await connection.beginTransaction();
 
     try {
-      // Create enrollment (trigger will check prerequisites and capacity)
+      // Create enrollment (trigger will check prerequisites, capacity, and duplicates)
       await connection.query(
         'INSERT INTO Enrollment (student_id, section_id, status, enrollment_date) VALUES (?, ?, "ENROLLED", NOW())',
         [studentId, sectionId]
-      );
-
-      // Update section enrollment count
-      await connection.query(
-        'UPDATE Section SET current_enrollment = current_enrollment + 1 WHERE section_id = ?',
-        [sectionId]
       );
 
       await connection.commit();
@@ -205,12 +199,18 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
       
       // Check for specific database errors
       if (error instanceof Error) {
+        console.log('Registration error:', error.message);
+        
         if (error.message.includes('Prerequisites not met')) {
           res.status(400).json({ message: error.message });
           return;
         }
         if (error.message.includes('Section is full')) {
           res.status(400).json({ message: 'Section is full!' });
+          return;
+        }
+        if (error.message.includes('Student is already enrolled')) {
+          res.status(400).json({ message: error.message });
           return;
         }
         if (error.message.includes('Duplicate entry')) {

@@ -33,6 +33,9 @@ export interface Student {
   major: string;
   gpa: string;
   enrollment_date: string;
+  date_of_birth: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Course {

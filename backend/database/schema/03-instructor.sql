@@ -21,4 +21,4 @@ CREATE TABLE IF NOT EXISTS Instructor (
     -- Indexes
     INDEX idx_instructor_name (last_name, first_name),
     INDEX idx_instructor_department (department)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

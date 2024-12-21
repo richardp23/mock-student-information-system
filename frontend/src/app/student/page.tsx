@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Book, GraduationCap, Clock, PlusCircle, Users } from 'lucide-react';
+import { Book, GraduationCap, Clock, PlusCircle, Users, User } from 'lucide-react';
 import api, { Student, Course, Grade, Instructor } from '@/lib/api';
 
 export default function StudentDashboard() {
@@ -204,6 +204,38 @@ export default function StudentDashboard() {
                 className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
               >
                 <span>View schedule</span>
+                <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Profile */}
+        <div className="bg-white overflow-hidden shadow rounded-lg transition-all hover:shadow-md flex flex-col">
+          <div className="p-5 flex-1">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <User className="h-6 w-6 text-blue-500" />
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">
+                    Student Profile
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    View and manage your profile
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-5 py-3">
+            <div className="text-sm">
+              <Link
+                href="/student/profile"
+                className="font-medium text-blue-600 hover:text-blue-500 inline-flex items-center group"
+              >
+                <span>View profile</span>
                 <span className="ml-2 transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
               </Link>
             </div>
