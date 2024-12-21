@@ -86,8 +86,11 @@ export interface Section {
   schedule: Schedule;
   max_capacity: number;
   available_seats: number;
-  status: string;
+  max_waitlist: number;
+  current_waitlist: number;
+  status: 'OPEN' | 'CLOSED' | 'WAITLIST_AVAILABLE' | 'CANCELLED';
   is_enrolled: boolean;
+  is_waitlisted: boolean;
   prerequisite?: {
     course_id: string;
     course_name: string;

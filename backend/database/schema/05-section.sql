@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS Section (
     }',
     max_capacity SMALLINT UNSIGNED NOT NULL DEFAULT 30,
     current_enrollment SMALLINT UNSIGNED DEFAULT 0,
-    status ENUM('OPEN', 'CLOSED', 'CANCELLED') DEFAULT 'OPEN',
+    max_waitlist SMALLINT UNSIGNED DEFAULT 10,
+    current_waitlist SMALLINT UNSIGNED DEFAULT 0,
+    status ENUM('OPEN', 'CLOSED', 'WAITLIST_AVAILABLE', 'CANCELLED') DEFAULT 'OPEN',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS Section (
         ON DELETE CASCADE 
         ON UPDATE CASCADE,
     CONSTRAINT chk_section_capacity CHECK (current_enrollment <= max_capacity),
+    CONSTRAINT chk_section_waitlist CHECK (current_waitlist <= max_waitlist),
     CONSTRAINT chk_section_year CHECK (year BETWEEN 2000 AND 2100),
     CONSTRAINT chk_schedule_format CHECK (JSON_VALID(schedule)),
     

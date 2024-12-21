@@ -12,9 +12,11 @@ router.get('/available-sections', async (req: Request, res: Response): Promise<v
 
     const [sections] = await pool.execute<RowDataPacket[]>(`
       WITH enrollment_counts AS (
-        SELECT section_id, COUNT(*) as enrolled_count
+        SELECT 
+          section_id, 
+          SUM(CASE WHEN status = 'ENROLLED' THEN 1 ELSE 0 END) as enrolled_count,
+          SUM(CASE WHEN status = 'WAITLISTED' THEN 1 ELSE 0 END) as waitlist_count
         FROM Enrollment
-        WHERE status = 'ENROLLED'
         GROUP BY section_id
       )
       SELECT 
@@ -24,12 +26,20 @@ router.get('/available-sections', async (req: Request, res: Response): Promise<v
         CONCAT(i.first_name, ' ', i.last_name) as instructor_name,
         s.schedule,
         s.max_capacity,
+        s.max_waitlist,
         COALESCE(s.max_capacity - ec.enrolled_count, s.max_capacity) as available_seats,
+        COALESCE(ec.waitlist_count, 0) as current_waitlist,
         s.status,
-        CASE WHEN e.student_id IS NOT NULL THEN 1 ELSE 0 END as is_enrolled,
+        CASE 
+          WHEN e.status = 'ENROLLED' THEN 1 
+          ELSE 0 
+        END as is_enrolled,
+        CASE 
+          WHEN e.status = 'WAITLISTED' THEN 1 
+          ELSE 0 
+        END as is_waitlisted,
         c.prerequisite_id,
-        pc.course_name as prerequisite_name,
-        CONCAT(c.prerequisite_id, ':', pc.course_name) as debug_prereq
+        pc.course_name as prerequisite_name
       FROM Section s
       JOIN Course c ON s.course_id = c.course_id
       LEFT JOIN Course pc ON c.prerequisite_id = pc.course_id
@@ -37,12 +47,11 @@ router.get('/available-sections', async (req: Request, res: Response): Promise<v
       LEFT JOIN enrollment_counts ec ON s.section_id = ec.section_id
       LEFT JOIN Enrollment e ON s.section_id = e.section_id 
         AND e.student_id = ?
-        AND e.status = 'ENROLLED'
-      WHERE s.status = 'OPEN'
+        AND e.status IN ('ENROLLED', 'WAITLISTED')
+      WHERE s.status != 'CANCELLED'
       ORDER BY s.course_id
     `, [studentId || null]);
 
-    console.log('Raw sections with debug info:', JSON.stringify(sections, null, 2));
     const mappedSections = sections.map(section => {
       let parsedSchedule;
       try {
@@ -54,13 +63,6 @@ router.get('/available-sections', async (req: Request, res: Response): Promise<v
         parsedSchedule = section.schedule;
       }
 
-      console.log('Processing section:', {
-        course_id: section.course_id,
-        prerequisite_id: section.prerequisite_id,
-        prerequisite_name: section.prerequisite_name,
-        debug_prereq: section.debug_prereq
-      });
-
       const result = {
         section_id: section.section_id,
         course_id: section.course_id,
@@ -69,8 +71,11 @@ router.get('/available-sections', async (req: Request, res: Response): Promise<v
         schedule: parsedSchedule,
         available_seats: Number(section.available_seats),
         max_capacity: Number(section.max_capacity),
+        max_waitlist: Number(section.max_waitlist),
+        current_waitlist: Number(section.current_waitlist),
         status: section.status,
         is_enrolled: Boolean(section.is_enrolled),
+        is_waitlisted: Boolean(section.is_waitlisted),
         prerequisite: null as { course_id: string; course_name: string } | null
       };
 
@@ -84,7 +89,6 @@ router.get('/available-sections', async (req: Request, res: Response): Promise<v
       return result;
     });
 
-    console.log('Final mapped sections:', JSON.stringify(mappedSections, null, 2));
     res.json(mappedSections);
   } catch (error) {
     console.error('Error fetching available sections:', error);
@@ -185,15 +189,46 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
     await connection.beginTransaction();
 
     try {
-      // Create enrollment (trigger will check prerequisites, capacity, and duplicates)
+      // Get section status and enrollment counts
+      const [sectionInfo] = await connection.query<RowDataPacket[]>(`
+        SELECT 
+          s.*,
+          COUNT(CASE WHEN e.status = 'ENROLLED' THEN 1 END) as enrolled_count,
+          COUNT(CASE WHEN e.status = 'WAITLISTED' THEN 1 END) as waitlist_count
+        FROM Section s
+        LEFT JOIN Enrollment e ON s.section_id = e.section_id
+        WHERE s.section_id = ?
+        GROUP BY s.section_id
+      `, [sectionId]);
+
+      if (!sectionInfo[0]) {
+        throw new Error('Section not found');
+      }
+
+      const section = sectionInfo[0];
+      const enrollmentStatus = section.enrolled_count < section.max_capacity 
+        ? 'ENROLLED' 
+        : section.waitlist_count < section.max_waitlist 
+          ? 'WAITLISTED' 
+          : 'FULL';
+
+      if (enrollmentStatus === 'FULL') {
+        throw new Error('Section is full and waitlist is full');
+      }
+
+      // Create enrollment (trigger will check prerequisites and duplicates)
       await connection.query(
-        'INSERT INTO Enrollment (student_id, section_id, status, enrollment_date) VALUES (?, ?, "ENROLLED", NOW())',
-        [studentId, sectionId]
+        'INSERT INTO Enrollment (student_id, section_id, status, enrollment_date) VALUES (?, ?, ?, NOW())',
+        [studentId, sectionId, enrollmentStatus]
       );
 
       await connection.commit();
-      console.log('Registration successful');
-      res.status(201).json({ message: 'Successfully registered for course!' });
+      console.log('Registration successful with status:', enrollmentStatus);
+      res.status(201).json({ 
+        message: enrollmentStatus === 'ENROLLED' 
+          ? 'Successfully registered for course!' 
+          : 'Successfully added to waitlist!'
+      });
     } catch (error) {
       await connection.rollback();
       
@@ -206,7 +241,7 @@ router.post('/:studentId/courses/:sectionId', async (req: Request, res: Response
           return;
         }
         if (error.message.includes('Section is full')) {
-          res.status(400).json({ message: 'Section is full!' });
+          res.status(400).json({ message: error.message });
           return;
         }
         if (error.message.includes('Student is already enrolled')) {

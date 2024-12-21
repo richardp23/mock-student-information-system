@@ -6,7 +6,14 @@ import { useRouter } from 'next/navigation';
 const STUDENT_MAP: { [key: string]: number } = {
   'john.smith23@my.johndoe.edu': 1,
   'jane.doe23@my.johndoe.edu': 2,
-  'bob.johnson23@my.johndoe.edu': 3
+  'bob.johnson23@my.johndoe.edu': 3,
+  'alice.brown23@my.johndoe.edu': 4,
+  'charlie.wilson23@my.johndoe.edu': 5,
+  'diana.miller23@my.johndoe.edu': 6,
+  'eva.garcia23@my.johndoe.edu': 7,
+  'frank.lee23@my.johndoe.edu': 8,
+  'grace.wang23@my.johndoe.edu': 9,
+  'henry.kim23@my.johndoe.edu': 10
 };
 
 const Logo = () => (

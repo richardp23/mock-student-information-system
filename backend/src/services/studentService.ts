@@ -16,6 +16,7 @@ export interface Course extends RowDataPacket {
   credits: number;
   department: string;
   instructor_name: string;
+  enrollment_status: 'ENROLLED' | 'WAITLISTED' | 'COMPLETED';
   schedule: {
     meetings: Array<{
       days: string[];
@@ -53,15 +54,23 @@ export const studentService = {
         c.credits,
         c.department,
         CONCAT(i.first_name, ' ', i.last_name) as instructor_name,
-        s.schedule
+        s.schedule,
+        e.status as enrollment_status
       FROM Enrollment e
       JOIN Section s ON e.section_id = s.section_id
       JOIN Course c ON s.course_id = c.course_id
       JOIN Instructor i ON s.instructor_id = i.instructor_id
       WHERE e.student_id = ?
-      AND e.status = 'ENROLLED'
+      AND e.status IN ('ENROLLED', 'WAITLISTED')
       AND s.semester = 'FALL'
       AND s.year = 2024
+      ORDER BY 
+        CASE e.status
+          WHEN 'ENROLLED' THEN 1
+          WHEN 'WAITLISTED' THEN 2
+          ELSE 3
+        END,
+        c.course_id
     `, [studentId]);
     return rows;
   },

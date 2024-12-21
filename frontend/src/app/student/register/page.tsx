@@ -83,6 +83,62 @@ export default function CourseRegistrationPage() {
     return schedule.meetings[0].room || '';
   };
 
+  const getButtonState = (section: Section) => {
+    if (registering) {
+      return {
+        text: 'Processing...',
+        disabled: true,
+        className: 'bg-gray-400 cursor-not-allowed'
+      };
+    }
+
+    if (section.is_enrolled) {
+      return {
+        text: 'Registered',
+        disabled: true,
+        className: 'bg-green-500 cursor-not-allowed'
+      };
+    }
+
+    if (section.is_waitlisted) {
+      return {
+        text: 'Waitlisted',
+        disabled: true,
+        className: 'bg-yellow-500 cursor-not-allowed'
+      };
+    }
+
+    if (section.status === 'CLOSED') {
+      return {
+        text: 'Closed',
+        disabled: true,
+        className: 'bg-red-400 cursor-not-allowed'
+      };
+    }
+
+    if (section.status === 'WAITLIST_AVAILABLE') {
+      return {
+        text: 'Join Waitlist',
+        disabled: false,
+        className: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+      };
+    }
+
+    if (section.available_seats <= 0) {
+      return {
+        text: 'Full',
+        disabled: true,
+        className: 'bg-red-400 cursor-not-allowed'
+      };
+    }
+
+    return {
+      text: 'Register',
+      disabled: false,
+      className: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+    };
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -147,7 +203,7 @@ export default function CourseRegistrationPage() {
                           </div>
                         )}
                       </div>
-                      <div className="ml-4">
+                      <div className="ml-4 flex flex-col items-end space-y-2">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           section.available_seats <= 0
                             ? 'bg-red-100 text-red-800'
@@ -155,31 +211,27 @@ export default function CourseRegistrationPage() {
                         }`}>
                           {section.available_seats} / {section.max_capacity} seats available
                         </span>
+                        {section.status === 'WAITLIST_AVAILABLE' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            {section.current_waitlist} / {section.max_waitlist} on waitlist
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="ml-6">
-                    <button
-                      onClick={() => handleRegister(section.section_id)}
-                      disabled={registering || section.available_seats <= 0 || section.is_enrolled}
-                      className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white 
-                        ${registering 
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : section.is_enrolled
-                            ? 'bg-green-500 cursor-not-allowed'
-                            : section.available_seats <= 0
-                              ? 'bg-red-400 cursor-not-allowed'
-                              : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                        }`}
-                    >
-                      {registering 
-                        ? 'Registering...' 
-                        : section.is_enrolled 
-                          ? 'Registered' 
-                          : section.available_seats <= 0 
-                            ? 'Full' 
-                            : 'Register'}
-                    </button>
+                    {(() => {
+                      const buttonState = getButtonState(section);
+                      return (
+                        <button
+                          onClick={() => handleRegister(section.section_id)}
+                          disabled={buttonState.disabled || registering}
+                          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${buttonState.className}`}
+                        >
+                          {buttonState.text}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

@@ -8,6 +8,7 @@ DROP TRIGGER IF EXISTS before_enrollment_insert;
 DROP TRIGGER IF EXISTS after_enrollment_insert;
 DROP TRIGGER IF EXISTS after_enrollment_update;
 DROP TRIGGER IF EXISTS after_enrollment_delete;
+DROP TRIGGER IF EXISTS after_section_update;
 
 DELIMITER //
 
@@ -18,14 +19,16 @@ FOR EACH ROW
 BEGIN
     DECLARE section_capacity INT;
     DECLARE current_enrollment INT;
+    DECLARE max_waitlist INT;
+    DECLARE current_waitlist INT;
     DECLARE course_id VARCHAR(10);
     DECLARE has_existing_enrollment BOOLEAN;
     DECLARE prerequisite_id VARCHAR(10);
     DECLARE has_completed_prerequisite BOOLEAN;
 
-    -- Get the course_id for the section being enrolled in
-    SELECT s.course_id, s.max_capacity, s.current_enrollment 
-    INTO course_id, section_capacity, current_enrollment
+    -- Get the course_id and section details for the section being enrolled in
+    SELECT s.course_id, s.max_capacity, s.current_enrollment, s.max_waitlist, s.current_waitlist
+    INTO course_id, section_capacity, current_enrollment, max_waitlist, current_waitlist
     FROM Section s 
     WHERE s.section_id = NEW.section_id;
 
@@ -36,21 +39,15 @@ BEGIN
         JOIN Section s ON e.section_id = s.section_id 
         WHERE e.student_id = NEW.student_id 
         AND s.course_id = course_id
-        AND e.status IN ('ENROLLED', 'COMPLETED')
+        AND e.status IN ('ENROLLED', 'COMPLETED', 'WAITLISTED')
     ) INTO has_existing_enrollment;
 
     IF has_existing_enrollment THEN
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Student is already enrolled in or has completed this course';
+        SET MESSAGE_TEXT = 'Student is already enrolled in, waitlisted for, or has completed this course';
     END IF;
 
-    -- Check section capacity
-    IF current_enrollment >= section_capacity THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Section is full';
-    END IF;
-
-    -- Get prerequisite course if exists
+    -- Check prerequisites before allowing enrollment or waitlist
     SELECT c.prerequisite_id 
     INTO prerequisite_id
     FROM Course c
@@ -74,6 +71,31 @@ BEGIN
             SET MESSAGE_TEXT = @message;
         END IF;
     END IF;
+
+    -- If trying to enroll directly
+    IF NEW.status = 'ENROLLED' THEN
+        -- Check if section is full
+        IF current_enrollment >= section_capacity THEN
+            -- If waitlist is available and not full, automatically put them on waitlist
+            IF current_waitlist < max_waitlist THEN
+                SET NEW.status = 'WAITLISTED';
+            ELSE
+                SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Section is full and waitlist is full';
+            END IF;
+        END IF;
+    -- If trying to join waitlist directly
+    ELSEIF NEW.status = 'WAITLISTED' THEN
+        -- Check if waitlist is full
+        IF current_waitlist >= max_waitlist THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Waitlist is full';
+        END IF;
+        -- Check if there are actually open spots (shouldn't waitlist if spots available)
+        IF current_enrollment < section_capacity THEN
+            SET NEW.status = 'ENROLLED';
+        END IF;
+    END IF;
 END//
 
 -- Create trigger to handle enrollment count updates
@@ -85,6 +107,10 @@ BEGIN
         UPDATE Section 
         SET current_enrollment = current_enrollment + 1
         WHERE section_id = NEW.section_id;
+    ELSEIF NEW.status = 'WAITLISTED' THEN
+        UPDATE Section 
+        SET current_waitlist = current_waitlist + 1
+        WHERE section_id = NEW.section_id;
     END IF;
 END//
 
@@ -94,16 +120,28 @@ AFTER UPDATE ON Enrollment
 FOR EACH ROW
 BEGIN
     -- Handle enrollment count changes
-    IF OLD.status = 'ENROLLED' AND NEW.status != 'ENROLLED' THEN
-        -- Student dropped or completed the course
-        UPDATE Section 
-        SET current_enrollment = current_enrollment - 1
-        WHERE section_id = NEW.section_id;
-    ELSEIF OLD.status != 'ENROLLED' AND NEW.status = 'ENROLLED' THEN
-        -- Student enrolled in the course
-        UPDATE Section 
-        SET current_enrollment = current_enrollment + 1
-        WHERE section_id = NEW.section_id;
+    IF OLD.status != NEW.status THEN
+        CASE
+            WHEN OLD.status = 'ENROLLED' THEN
+                UPDATE Section 
+                SET current_enrollment = current_enrollment - 1
+                WHERE section_id = NEW.section_id;
+            WHEN OLD.status = 'WAITLISTED' THEN
+                UPDATE Section 
+                SET current_waitlist = current_waitlist - 1
+                WHERE section_id = NEW.section_id;
+        END CASE;
+
+        CASE
+            WHEN NEW.status = 'ENROLLED' THEN
+                UPDATE Section 
+                SET current_enrollment = current_enrollment + 1
+                WHERE section_id = NEW.section_id;
+            WHEN NEW.status = 'WAITLISTED' THEN
+                UPDATE Section 
+                SET current_waitlist = current_waitlist + 1
+                WHERE section_id = NEW.section_id;
+        END CASE;
     END IF;
 
     -- Handle grade updates
@@ -127,6 +165,40 @@ BEGIN
         UPDATE Section 
         SET current_enrollment = current_enrollment - 1
         WHERE section_id = OLD.section_id;
+    ELSEIF OLD.status = 'WAITLISTED' THEN
+        UPDATE Section 
+        SET current_waitlist = current_waitlist - 1
+        WHERE section_id = OLD.section_id;
+    END IF;
+END//
+
+-- Create trigger to handle automatic waitlist promotion
+CREATE TRIGGER after_section_update
+AFTER UPDATE ON Section
+FOR EACH ROW
+BEGIN
+    DECLARE student_to_promote INT;
+    DECLARE section_to_update INT;
+
+    -- If a spot opened up (enrollment decreased) and there are people on waitlist
+    IF NEW.current_enrollment < OLD.current_enrollment 
+       AND NEW.current_waitlist > 0 THEN
+        -- Find the first student on the waitlist (by enrollment date)
+        SELECT enrollment_id, student_id
+        INTO student_to_promote
+        FROM Enrollment
+        WHERE section_id = NEW.section_id
+        AND status = 'WAITLISTED'
+        ORDER BY enrollment_date ASC
+        LIMIT 1;
+
+        -- If we found a student to promote
+        IF student_to_promote IS NOT NULL THEN
+            -- Update their status to enrolled
+            UPDATE Enrollment
+            SET status = 'ENROLLED'
+            WHERE enrollment_id = student_to_promote;
+        END IF;
     END IF;
 END//
 
